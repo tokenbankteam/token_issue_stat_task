@@ -1,0 +1,39 @@
+log:
+  level: info
+
+db:
+  host: 172.24.100.179
+  port: 3306
+  user: root
+  password: "8Fg2H^CRrD8Q"
+  database: token_bank
+  maxopenconns: 4      # 只读扫描，小连接池，避免和其它服务抢连接
+  maxidleconns: 2
+
+# kafka：与 swap_token_search_task 同一集群
+brokerlist:
+  - '0.kf-a7r46nym7n8p63np.automq-tp-qd.automq.private:9092'
+  - '1.kf-a7r46nym7n8p63np.automq-tp-qd.automq.private:9092'
+  - '2.kf-a7r46nym7n8p63np.automq-tp-qd.automq.private:9092'
+
+# swap_token_search_task 消费的 topic
+tokenstatresulttopic: token_stat_result_topic_test
+
+# tb_server 地址（价格接口 /v1/token/token_price_list）
+tbserveraddr: 'http://preserver.mytokenpocket.vip'
+tbservertimeoutseconds: 5
+
+# 香港集群 automq：服务启动时把链维度数据（blockchain_id / chain_id / namespace）发送一次
+hkautomqbrokerlist:
+  - '0.kf-ttri1xazs6weg70s.automq-0b8t.automq.private:9092'
+  - '1.kf-ttri1xazs6weg70s.automq-0b8t.automq.private:9092'
+  - '2.kf-ttri1xazs6weg70s.automq-0b8t.automq.private:9092'
+earningrwblockchaintopic: earning_rw_blockchain
+
+scanner:
+  enabled: true
+  batchsize: 500                          # 每批 200 个 token
+  sleepmillis: 500                        # 每批处理完休眠 500ms
+  resume: true                            # 断点续扫
+  reset: false                            # true = 删断点文件从头扫
+  checkpointfile: "./checkpoint.json"     # 断点文件（容器请挂 volume）
