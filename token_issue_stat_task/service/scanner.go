@@ -336,20 +336,27 @@ func (s *Scanner) buildMessages(ctx context.Context, extRows []*extensionRow, to
 		}
 		// ★ EVM 系链（namespace=ETHEREUM，或 eth/heco/bsc/okc/klaytn）地址统一转小写，
 		// 消息体和 Kafka key 都用转换后的地址，避免大小写不一致导致下游把同一个 token 当两条。
-		address := s.canonicalAddress(ctx, token)
+		namespace := s.blockChain.GetNamespace(ctx, token.BlockchainId)
+		address := checkAddressAndToLower(token.Address, token.BlockchainId, namespace)
+		// issuer 也是链上地址，与 token 地址同一套规整规则，避免大小写混用
+		issuer := checkAddressAndToLower(ext.Issuer, token.BlockchainId, namespace)
 		tokenKey := &cmodel.TokenKey{
 			BlockchainId: token.BlockchainId,
 			Address:      address,
 			BlSymbol:     token.BlSymbol,
 		}
+		attribute := &cmodel.TokenAttribute{
+			Issuer:    issuer,
+			IssueTime: ext.IssueTime,
+			MarketCap: calcMarketCap(token, ext, prices[ext.TokenId]),
+		}
+		// holder_count 为 0 表示本次没取到，保持零值不覆盖下游已有数据
+		if token.HolderCount > 0 {
+			attribute.HolderCount = token.HolderCount
+		}
 		msg := &cmodel.TokenStatTaskMsg{
-			TokenKey: tokenKey,
-			TokenAttribute: &cmodel.TokenAttribute{
-				Issuer:      ext.Issuer,
-				IssueTime:   ext.IssueTime,
-				HolderCount: token.HolderCount,
-				MarketCap:   calcMarketCap(token, ext, prices[ext.TokenId]),
-			},
+			TokenKey:       tokenKey,
+			TokenAttribute: attribute,
 		}
 		value, err := json.Marshal(msg)
 		if err != nil {
