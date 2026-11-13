@@ -1,5 +1,5 @@
 [Unit]
-Description=token_issue_stat_task (扫描 t_token_extension issue -> kafka -> swap_token_search_task)
+Description=token_issuer_stat_task (扫描 t_token_extension issuer -> kafka -> swap_token_search_task)
 After=network-online.target
 Wants=network-online.target
 
@@ -8,7 +8,7 @@ Type=oneshot
 WorkingDirectory=/data/token_issue_stat_task
 ExecStart=/data/token_issue_stat_task/token_issue_stat_task -config /data/token_issue_stat_task/config.yaml
 # 断点文件放本地盘（物理机 ✓），中断后重跑会从 last_token_id 继续 ✓
-# 失败不自动重启（手动/定时重跑即可，断点会续上 ✓）
+# 失败不自动重启（手动重跑即可，断点会续上 ✓）
 Restart=no
 TimeoutStartSec=0
 StandardOutput=append:/data/token_issue_stat_task/logs/run.log

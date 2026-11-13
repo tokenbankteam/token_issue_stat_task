@@ -49,7 +49,7 @@ type Scanner struct {
 
 func New(cfg *config.Config, db *gorm.DB) *Scanner {
 	s := &Scanner{
-		taskName:   "token-issue-stat",
+		taskName:   "token-issuer-stat",
 		cfg:        cfg,
 		db:         db,
 		pricer:     newPriceClient(cfg.TbServerAddr, cfg.TbServerTimeout()),
@@ -91,7 +91,7 @@ func (s *Scanner) Run(ctx context.Context) error {
 		Int("sleepMillis", s.cfg.Scanner.SleepMillis).
 		Bool("resume", s.cfg.Scanner.Resume).
 		Str("topic", s.cfg.TokenStatResultTopic).
-		Msg("token-issue-stat scanner start")
+		Msg("token-issuer-stat scanner start")
 
 	// 启动时只从 tb_server 拉取一次链配置，后面全走内存缓存
 	if _, err := s.blockChain.List(ctx); err != nil {
@@ -121,7 +121,6 @@ func (s *Scanner) Run(ctx context.Context) error {
 				Int64("lastTokenId", cp.LastTokenId).
 				Int64("scanned", cp.Scanned).
 				Int64("sent", cp.Sent).
-				Bool("finished", cp.Finished).
 				Msg("resume from checkpoint")
 		}
 	}
@@ -137,8 +136,8 @@ func (s *Scanner) Run(ctx context.Context) error {
 		log.Error().Err(err).Dur("cost", time.Since(startAt)).Msg("scan failed (checkpoint kept, rerun to resume)")
 		return err
 	}
-	// 扫完把断点归零，下一轮从头开始 ✓
-	if err := saveCheckpoint(checkpointPath, &checkpoint{Finished: true}); err != nil {
+	// 扫完删掉断点文件：下次运行从头开始 ✓
+	if err := resetCheckpoint(checkpointPath); err != nil {
 		log.Warn().Err(err).Msg("reset checkpoint after done failed")
 	}
 	log.Info().Dur("cost", time.Since(startAt)).Msg("scan success, exit")
@@ -346,7 +345,7 @@ func (s *Scanner) buildMessages(ctx context.Context, extRows []*extensionRow, to
 		msg := &cmodel.TokenStatTaskMsg{
 			TokenKey: tokenKey,
 			TokenAttribute: &cmodel.TokenAttribute{
-				Issue:       ext.Issuer,
+				Issuer:      ext.Issuer,
 				IssueTime:   ext.IssueTime,
 				HolderCount: token.HolderCount,
 				MarketCap:   calcMarketCap(token, ext, prices[ext.TokenId]),

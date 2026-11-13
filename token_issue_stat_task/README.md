@@ -125,23 +125,13 @@ nohup ./token_issue_stat_task -config config.yaml >> logs/run.log 2>&1 &
 # 扫完会自己退出 ✓（exit 0）
 ```
 
-### systemd（可选 ✓ 一次性任务）
+### systemd（一次性任务）
 
 ```bash
 cp deploy/token_issue_stat_task.service /etc/systemd/system/
 systemctl daemon-reload
-systemctl start token_issue_stat_task        # 手动跑一次
+systemctl start token_issue_stat_task        # 跑一次，扫完自动退出
 systemctl status token_issue_stat_task
-
-# 需要每天定时跑：
-cp deploy/token_issue_stat_task.timer /etc/systemd/system/
-systemctl enable --now token_issue_stat_task.timer
-```
-
-### cron（也行 ✓）
-
-```cron
-0 3 * * * cd /data/token_issue_stat_task && ./token_issue_stat_task -config config.yaml >> logs/run.log 2>&1
 ```
 
 > 断了直接再跑一次即可 ✓ —— 断点文件在本地盘 ✓，会从 `last_token_id` 继续 ✓。

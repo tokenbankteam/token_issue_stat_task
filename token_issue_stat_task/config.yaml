@@ -2,10 +2,10 @@ log:
   level: info
 
 db:
-  host: 172.24.100.179
+  host:  172.24.101.219 #172.24.100.179
   port: 3306
-  user: root
-  password: "8Fg2H^CRrD8Q"
+  user: tokenbankDev
+  password: 4Q7BSOJZEtl3jpaK #"8Fg2H^CRrD8Q"
   database: token_bank
   maxopenconns: 4      # 只读扫描，小连接池，避免和其它服务抢连接
   maxidleconns: 2

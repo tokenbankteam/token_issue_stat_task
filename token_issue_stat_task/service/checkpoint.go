@@ -15,7 +15,6 @@ type checkpoint struct {
 	LastTokenId int64  `json:"last_token_id"`
 	Scanned     int64  `json:"scanned"`
 	Sent        int64  `json:"sent"`
-	Finished    bool   `json:"finished"`
 	UpdatedAt   string `json:"updated_at"`
 }
 
