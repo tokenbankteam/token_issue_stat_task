@@ -1,0 +1,49 @@
+# 可选：每天 03:00 跑一次（一次性 Job 的定时版）
+# 注意：扫完会删除 checkpoint，所以每次都是全量重扫
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: token-issue-stat-task-cron
+  namespace: tp-bserver
+spec:
+  schedule: "0 3 * * *"
+  timeZone: "Asia/Shanghai"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        spec:
+          restartPolicy: Never
+          imagePullSecrets:
+            - name: tp-hk-registry-gb
+          containers:
+            - name: token-issue-stat-task
+              image: registry-intl.cn-hongkong.aliyuncs.com/tokenpocketgb/token-issue-stat-task:TPIMAGE_VERSION
+              imagePullPolicy: "Always"
+              volumeMounts:
+                - name: configmap-volume
+                  mountPath: /home/tokenbank/token-issue-stat-task/config/config_prod.yml
+                  subPath: config_prod.yml
+                - name: data-volume
+                  mountPath: /data
+              resources:
+                limits:
+                  cpu: "1"
+                  memory: "1Gi"
+                requests:
+                  cpu: "0.2"
+                  memory: "200Mi"
+          volumes:
+            - name: configmap-volume
+              configMap:
+                name: config-token-issue-stat-task-prod
+                items:
+                  - key: config_prod.yml
+                    path: config_prod.yml
+            - name: data-volume
+              hostPath:
+                path: /var/log/tblogs/token-issue-stat-task
+                type: DirectoryOrCreate
