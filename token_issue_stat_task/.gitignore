@@ -1,2 +1,5 @@
 .idea/
 *.iml
+token_issue_stat_task
+k8s/tmp.job.yaml
+checkpoint.json
