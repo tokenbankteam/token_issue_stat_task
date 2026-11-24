@@ -348,11 +348,15 @@ func (s *Scanner) buildMessages(ctx context.Context, extRows []*extensionRow, to
 		attribute := &cmodel.TokenAttribute{
 			Issuer:    issuer,
 			IssueTime: ext.IssueTime,
-			MarketCap: calcMarketCap(token, ext, prices[ext.TokenId]),
 		}
-		// holder_count 为 0 表示本次没取到，保持零值不覆盖下游已有数据
+		// market_cap 为 0 表示本次没算出来：不设置指针，序列化时字段会省略
+		if marketCap := calcMarketCap(token, ext, prices[ext.TokenId]); marketCap > 0 {
+			attribute.MarketCap = &marketCap
+		}
+		// holder_count 为 0 表示本次没取到：不设置指针，序列化时字段会省略
 		if token.HolderCount > 0 {
-			attribute.HolderCount = token.HolderCount
+			holderCount := token.HolderCount
+			attribute.HolderCount = &holderCount
 		}
 		msg := &cmodel.TokenStatTaskMsg{
 			TokenKey:       tokenKey,

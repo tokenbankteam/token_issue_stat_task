@@ -6,7 +6,7 @@ require (
 	github.com/rs/zerolog v1.34.0
 	github.com/segmentio/kafka-go v0.4.49
 	github.com/shopspring/decimal v1.4.0
-	github.com/tokenbankteam/tb_common v1.3.6-0.20261113081659-163af31070e1
+	github.com/tokenbankteam/tb_common v1.3.7
 	github.com/tokenbankteam/tp-base-server v0.1.9-pb
 	gopkg.in/yaml.v3 v3.0.1
 	gorm.io/driver/mysql v1.6.0
