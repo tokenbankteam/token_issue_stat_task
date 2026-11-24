@@ -13,6 +13,7 @@ import (
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 
+	"github.com/tokenbankteam/tb_common/cache"
 	cmodel "github.com/tokenbankteam/tb_common/model"
 	"github.com/tokenbankteam/token_issue_stat_task/config"
 )
@@ -45,6 +46,9 @@ type Scanner struct {
 	blockChain *blockChainCache
 	// bcWriter 香港集群 writer，仅启动时发送一次 earning_rw_blockchain
 	bcWriter *kafka.Writer
+	// rdb 断点存储（Redis，见 checkpoint.go）
+	rdb           *cache.Cache
+	checkpointKey string
 }
 
 func New(cfg *config.Config, db *gorm.DB) *Scanner {
@@ -63,6 +67,20 @@ func New(cfg *config.Config, db *gorm.DB) *Scanner {
 			RequiredAcks: int(kafka.RequireOne),
 		}),
 	}
+	// 断点存 Redis：连不上就降级为「不记录断点」，不阻塞扫描
+	s.checkpointKey = checkpointKey(cfg.Scanner.CheckpointKey)
+	if cfg.Redis.Url != "" {
+		if rdb, err := cache.NewCache("checkpoint", &cache.RedisConfig{Instances: map[string]cache.RedisInstConfig{
+			"checkpoint": {Url: cfg.Redis.Url, Password: cfg.Redis.Password},
+		}}); err != nil {
+			log.Error().Err(err).Str("redis", cfg.Redis.Url).Msg("connect redis for checkpoint failed, resume disabled")
+		} else {
+			s.rdb = rdb
+		}
+	} else {
+		log.Warn().Msg("redis.url 未配置，断点续扫不可用")
+	}
+
 	if len(cfg.HkAutoMqBrokerList) > 0 && cfg.EarningRwBlockchainTopic != "" {
 		s.bcWriter = kafka.NewWriter(kafka.WriterConfig{
 			Brokers:      cfg.HkAutoMqBrokerList,
@@ -108,16 +126,15 @@ func (s *Scanner) Run(ctx context.Context) error {
 		startFrom             int64
 		baseScanned, baseSent int64
 	)
-	checkpointPath := s.cfg.Scanner.CheckpointFile
 	if s.cfg.Scanner.Resume {
-		cp, err := loadCheckpoint(checkpointPath)
+		cp, err := loadCheckpoint(s.rdb, s.checkpointKey)
 		if err != nil {
 			log.Warn().Err(err).Msg("load checkpoint failed, fallback to full scan")
 		} else if cp != nil {
 			startFrom = cp.LastTokenId
 			baseScanned, baseSent = cp.Scanned, cp.Sent
 			log.Info().
-				Str("checkpoint", checkpointPath).
+				Str("checkpointKey", s.checkpointKey).
 				Int64("lastTokenId", cp.LastTokenId).
 				Int64("scanned", cp.Scanned).
 				Int64("sent", cp.Sent).
@@ -125,19 +142,19 @@ func (s *Scanner) Run(ctx context.Context) error {
 		}
 	}
 	if s.cfg.Scanner.Reset {
-		if err := resetCheckpoint(checkpointPath); err != nil {
+		if err := resetCheckpoint(s.rdb, s.checkpointKey); err != nil {
 			log.Warn().Err(err).Msg("reset checkpoint failed")
 		}
 		startFrom = 0
 	}
 
 	startAt := time.Now()
-	if err := s.scanFrom(ctx, startFrom, baseScanned, baseSent, checkpointPath); err != nil {
+	if err := s.scanFrom(ctx, startFrom, baseScanned, baseSent); err != nil {
 		log.Error().Err(err).Dur("cost", time.Since(startAt)).Msg("scan failed (checkpoint kept, rerun to resume)")
 		return err
 	}
 	// 扫完删掉断点文件：下次运行从头开始 ✓
-	if err := resetCheckpoint(checkpointPath); err != nil {
+	if err := resetCheckpoint(s.rdb, s.checkpointKey); err != nil {
 		log.Warn().Err(err).Msg("reset checkpoint after done failed")
 	}
 	log.Info().Dur("cost", time.Since(startAt)).Msg("scan success, exit")
@@ -146,7 +163,7 @@ func (s *Scanner) Run(ctx context.Context) error {
 
 // scanOnce 第一段按 token_id 游标扫 t_token_extension（issuer 非空），
 // 第二段按这批 token_id 取 t_token，然后推送。
-func (s *Scanner) scanFrom(ctx context.Context, startFrom, baseScanned, baseSent int64, checkpointPath string) error {
+func (s *Scanner) scanFrom(ctx context.Context, startFrom, baseScanned, baseSent int64) error {
 	var (
 		lastTokenId  = startFrom
 		extensions   int
@@ -201,7 +218,7 @@ func (s *Scanner) scanFrom(ctx context.Context, startFrom, baseScanned, baseSent
 			sentTotal += int64(len(msgs))
 		}
 		// ★ 每批结束落断点（本地文件 ✓），断了能从这里继续 ✓
-		if err := saveCheckpoint(checkpointPath, &checkpoint{
+		if err := saveCheckpoint(s.rdb, s.checkpointKey, &checkpoint{
 			LastTokenId: lastTokenId,
 			Scanned:     scannedTotal,
 			Sent:        sentTotal,

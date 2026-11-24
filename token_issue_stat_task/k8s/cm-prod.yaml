@@ -39,11 +39,15 @@ data:
       - '2.kf-ttri1xazs6weg70s.automq-0b8t.automq.private:9092'
     earningrwblockchaintopic: earning_rw_blockchain
 
+    # 断点存储：Redis（跨 Pod / 跨节点重建都能续扫）
+    redis:
+      url: "redis-qd-0.mytokenpocket.vip:6379"
+      password: ""
+
     scanner:
       enabled: true
       batchsize: 500
       sleepmillis: 500
       resume: true
       reset: false
-      # 容器里挂 hostPath，重启后可续扫
-      checkpointfile: "/data/checkpoint.json"
+      checkpointkey: "token_issue_stat_task_checkpoint"

@@ -26,8 +26,6 @@ spec:
             - name: configmap-volume
               mountPath: /home/tokenbank/token-issue-stat-task/config/config_prod.yml
               subPath: config_prod.yml
-            - name: data-volume
-              mountPath: /data
           resources:
             limits:
               cpu: "1"
@@ -42,7 +40,3 @@ spec:
             items:
               - key: config_prod.yml
                 path: config_prod.yml
-        - name: data-volume
-          hostPath:
-            path: /var/log/tblogs/token-issue-stat-task
-            type: DirectoryOrCreate

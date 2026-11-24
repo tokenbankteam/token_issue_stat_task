@@ -12,6 +12,7 @@ import (
 type Config struct {
 	Log     LogConfig     `yaml:"log"`
 	DB      DBConfig      `yaml:"db"`
+	Redis   RedisConfig   `yaml:"redis"`
 	Scanner ScannerConfig `yaml:"scanner"`
 
 	// BrokerList kafka 集群（与 swap_token_search_task 相同 ✓）
@@ -38,6 +39,12 @@ func (c *Config) TbServerTimeout() time.Duration {
 
 type LogConfig struct {
 	Level string `yaml:"level"`
+}
+
+// RedisConfig 断点存储（只用一个 key，无需多实例）
+type RedisConfig struct {
+	Url      string `yaml:"url"`
+	Password string `yaml:"password"`
 }
 
 type DBConfig struct {
@@ -71,8 +78,8 @@ type ScannerConfig struct {
 	Resume bool `yaml:"resume"`
 	// Reset 启动前清空断点，从头扫（一次性重跑用 ✓）
 	Reset bool `yaml:"reset"`
-	// CheckpointFile 断点文件路径（默认 ./checkpoint.json ✓）
-	CheckpointFile string `yaml:"checkpointfile"`
+	// CheckpointKey 断点在 Redis 里的 key（默认 token_issue_stat_task_checkpoint ✓）
+	CheckpointKey string `yaml:"checkpointkey"`
 }
 
 // Load 读取 yaml 配置并填默认值
@@ -91,8 +98,8 @@ func Load(path string) (*Config, error) {
 	if cfg.Scanner.SleepMillis <= 0 {
 		cfg.Scanner.SleepMillis = 500
 	}
-	if cfg.Scanner.CheckpointFile == "" {
-		cfg.Scanner.CheckpointFile = "./checkpoint.json"
+	if cfg.Scanner.CheckpointKey == "" {
+		cfg.Scanner.CheckpointKey = "token_issue_stat_task_checkpoint"
 	}
 	if cfg.TbServerAddr == "" {
 		cfg.TbServerAddr = "http://127.0.0.1:8080"

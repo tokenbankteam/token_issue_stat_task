@@ -10,9 +10,9 @@ RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone \
  && addgroup -g 500 tokenbank \
  && adduser -u 500 -D -h ${WORKPATH} -G tokenbank tokenbank
 
-# WORKDIR 由 docker 以 root 创建，先建目录并授权，否则非 root 用户无法写 checkpoint
-RUN mkdir -p ${WORKPATH}/${TARGET}/config /data \
- && chown -R tokenbank:tokenbank ${WORKPATH} /data
+# WORKDIR 由 docker 以 root 创建，先建目录并授权
+RUN mkdir -p ${WORKPATH}/${TARGET}/config \
+ && chown -R tokenbank:tokenbank ${WORKPATH}
 
 WORKDIR ${WORKPATH}/${TARGET}
 

@@ -30,10 +30,15 @@ hkautomqbrokerlist:
   - '2.kf-ttri1xazs6weg70s.automq-0b8t.automq.private:9092'
 earningrwblockchaintopic: earning_rw_blockchain
 
+# 断点存储：Redis（跨 Pod 重建也能续扫）
+redis:
+  url: "redis-qd-0.mytokenpocket.vip:6379"
+  password: ""
+
 scanner:
   enabled: true
-  batchsize: 500                          # 每批 200 个 token
+  batchsize: 500                          # 每批 500 个 token
   sleepmillis: 500                        # 每批处理完休眠 500ms
-  resume: true                            # 断点续扫
-  reset: false                            # true = 删断点文件从头扫
-  checkpointfile: "./checkpoint.json"     # 断点文件（容器请挂 volume）
+  resume: true                            # 断点续扫（从 Redis 读）
+  reset: false                            # true = 删除 Redis 断点从头扫
+  checkpointkey: "token_issue_stat_task_checkpoint"
